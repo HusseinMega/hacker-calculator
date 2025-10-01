@@ -1,52 +1,29 @@
-# ==================================================================
-#  ملف بناء APK حديث لتطبيق Kivy باستخدام GitHub Actions
-#  الإصدار: 2025.10.01
-# ==================================================================
-
 name: Build Kivy APK (Modern)
 
-# هذا الجزء يجعل العملية تبدأ تلقائيًا عند أي تحديث للكود
 on: [push]
 
 jobs:
   build-android:
-    # استخدام أحدث بيئة Ubuntu متوفرة
     runs-on: ubuntu-latest
 
     steps:
-      # ------------------------------------------------------------------
-      # الخطوة 1: تحميل الكود الخاص بك من المستودع
-      # نستخدم أحدث إصدار (v4) لضمان التوافق
       - name: Checkout repository code
         uses: actions/checkout@v4
 
-      # ------------------------------------------------------------------
-      # الخطوة 2: إعداد بيئة بايثون
-      # نستخدم أحدث إصدار (v5) ونحدد نسخة بايثون
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.9'
 
-      # ------------------------------------------------------------------
-      # الخطوة 3: بناء التطبيق باستخدام Buildozer
-      # نستخدم أحدث إصدار متوافق (v1.2.1) الذي يحل مشكلة المستخدم
       - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1.2.1
+        uses: ArtemSBulgakov/buildozer-action@1.2.1  # <-- تم تصحيح هذا السطر
         id: buildozer
         with:
-          # إصدار Buildozer نفسه
           buildozer_version: "1.5.0"
-          # الأمر الذي سيتم تنفيذه
           command: "buildozer android debug"
           
-      # ------------------------------------------------------------------
-      # الخطوة 4: رفع ملف الـ APK الناتج
-      # نستخدم أحدث إصدار (v4) الذي يحل مشكلة الإهمال
       - name: Upload generated APK
         uses: actions/upload-artifact@v4
         with:
-          # اسم الملف الذي سيتم تحميله
           name: HackerCalculator-APK
-          # مسار ملف الـ APK الذي تم إنشاؤه
           path: ${{ steps.buildozer.outputs.filename }}
