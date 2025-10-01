@@ -46,108 +46,85 @@ jobs:
             libtool \
             pkg-config
 
-      - name: Install Buildozer and Cython
+      - name: Install Buildozer
         run: |
           pip install --upgrade pip
-          pip install buildozer cython==0.29.33
-
-      - name: Setup Android SDK and NDK
-        run: |
-          # إنشاء مجلد Android SDK
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
-          
-          # تحميل Android Command Line Tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip -q commandlinetools-linux-9477386_latest.zip
-          mv cmdline-tools latest
-          
-          # تعيين متغيرات البيئة
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
-          
-          # قبول التراخيص
-          yes | sdkmanager --licenses || true
-          
-          # تثبيت Build Tools وNDK إصدار 25b (متوافق مع buildozer.spec)
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
-          
-          # حفظ المتغيرات للخطوات التالية
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
-          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
-          echo "$HOME/android-sdk/build-tools/33.0.2" >> $GITHUB_PATH
+          pip install --upgrade buildozer cython==0.29.33
+          pip install --upgrade python-for-android
 
       - name: Fix duplicate entries in buildozer.spec
         run: |
           echo "=== Fixing buildozer.spec duplicates ==="
           if [ -f buildozer.spec ]; then
-            # إزالة الأسطر المكررة مع الحفاظ على الترتيب
+            # إزالة الأسطر المكررة
             awk '!seen[$0]++' buildozer.spec > buildozer.spec.tmp
             mv buildozer.spec.tmp buildozer.spec
             
-            # التحقق من الإعدادات
-            echo "=== Checking buildozer.spec settings ==="
-            grep "android.api" buildozer.spec || echo "⚠️ android.api not found"
-            grep "android.minapi" buildozer.spec || echo "⚠️ android.minapi not found"
-            grep "android.ndk" buildozer.spec || echo "⚠️ android.ndk not found"
-            grep "android.accept_sdk_license" buildozer.spec || echo "⚠️ android.accept_sdk_license not found"
-            echo "=== buildozer.spec verification complete ==="
-          else
-            echo "❌ buildozer.spec file not found!"
-            exit 1
+            # عرض الإعدادات
+            echo "=== Current buildozer.spec Android settings ==="
+            grep "^android\." buildozer.spec | grep -v "^#"
           fi
 
-      - name: Cache Buildozer directory
+      - name: Cache Buildozer global packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }}-v4
+
+      - name: Cache Buildozer local build
         uses: actions/cache@v3
         with:
           path: .buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}-v3
-          restore-keys: |
-            buildozer-
+          key: buildozer-local-${{ hashFiles('buildozer.spec') }}-v4
 
-      - name: Build with Buildozer
+      - name: Build with Buildozer (accept all prompts)
         run: |
-          # التأكد من وجود المتغيرات
-          export ANDROID_HOME=$HOME/android-sdk
-          export ANDROID_SDK_ROOT=$HOME/android-sdk
-          export ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653
-          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/33.0.2
+          # مسح متغيرات Android المتعارضة
+          unset ANDROID_HOME
+          unset ANDROID_SDK_ROOT
+          unset ANDROID_NDK_HOME
+          unset ANDROID_NDK
+          unset ANDROID_NDK_ROOT
           
-          # عرض معلومات البيئة
-          echo "=== Environment Info ==="
-          echo "ANDROID_HOME: $ANDROID_HOME"
-          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
-          echo "Python version: $(python --version)"
-          echo "Buildozer version: $(buildozer --version)"
-          
-          # بناء APK
-          echo "=== Starting APK Build ==="
-          buildozer -v android debug || (echo "=== Build Failed - Showing Logs ===" && cat .buildozer/android/platform/build-*/log/*.log 2>/dev/null && exit 1)
+          # السماح لـ buildozer بإدارة كل شيء
+          echo "=== Starting Build ==="
+          yes | buildozer -v android debug 2>&1 | tee build.log || {
+            echo "=== Build Failed ==="
+            echo "=== Last 100 lines of build log ==="
+            tail -n 100 build.log
+            echo "=== Searching for errors ==="
+            grep -i "error" build.log | tail -n 20 || true
+            exit 1
+          }
 
-      - name: List generated files
+      - name: List generated APK files
         if: success()
         run: |
-          echo "=== Checking for APK files ==="
-          ls -lh bin/ || echo "bin/ directory not found"
-          find . -name "*.apk" -type f
+          echo "=== Looking for APK files ==="
+          find . -name "*.apk" -type f -exec ls -lh {} \;
 
-      - name: Upload APK artifact
+      - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: HackerCalculator-APK
           path: bin/*.apk
-          if-no-files-found: warn
+          if-no-files-found: error
 
-      - name: Upload build logs on failure
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
+
+      - name: Upload full buildozer logs on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: build-logs
+          name: buildozer-logs
           path: |
-            .buildozer/android/platform/build-*/log/*.log
-            .buildozer/android/logs/*.log
+            .buildozer/android/platform/build-*/logs/**/*
+            .buildozer/android/logs/**/*
           if-no-files-found: ignore
