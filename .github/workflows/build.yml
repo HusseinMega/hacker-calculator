@@ -1,27 +1,67 @@
 name: Build with Official Kivy Action
-
 on: [push]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # ==================================================================
-      #  *** استخدام الأداة الرسمية من فريق Kivy ***
-      #  هذه هي الطريقة الأكثر موثوقية واستقرارًا
-      # ==================================================================
-      - name: Build with official Kivy action
-        uses: kivy/buildozer-action@master
-        id: buildozer
+      # تثبيت Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          # لا تحتاج إلى أي إعدادات إضافية، الأداة ذكية بما يكفي
-          # للبحث عن ملف buildozer.spec وبناء المشروع
-          command: buildozer android debug
+          python-version: '3.11'
 
+      # تثبيت الاعتماديات
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.33
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            ffmpeg \
+            libsdl2-dev \
+            libsdl2-image-dev \
+            libsdl2-mixer-dev \
+            libsdl2-ttf-dev \
+            libportmidi-dev \
+            libswscale-dev \
+            libavformat-dev \
+            libavcodec-dev \
+            zlib1g-dev \
+            libgstreamer1.0 \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            openjdk-17-jdk \
+            unzip
+
+      # إعداد Android SDK/NDK
+      - name: Setup Android environment
+        run: |
+          # تثبيت Android SDK Command-line tools
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools-linux-9477386_latest.zip
+          mv cmdline-tools latest
+          
+          # تعيين متغيرات البيئة
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_ENV
+
+      # بناء APK
+      - name: Build APK with Buildozer
+        run: |
+          buildozer android debug
+
+      # رفع ملف APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HackerCalculator-APK
-          path: ${{ steps.buildozer.outputs.apk_path }}
+          path: .buildozer/android/platform/build-*/outputs/apk/debug/*.apk
