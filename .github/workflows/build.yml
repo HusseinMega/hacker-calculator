@@ -1,30 +1,26 @@
-name: Build Android APK with GitHub Actions
+name: Build with Official Kivy Action
 
 on: [push]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
+      - uses: actions/checkout@v4
 
       # ==================================================================
-      #  *** تم تصحيح اسم مالك الأداة هنا ***
+      #  *** استخدام الأداة الرسمية من فريق Kivy ***
+      #  هذه هي الطريقة الأكثر موثوقية واستقرارًا
       # ==================================================================
-      - name: Build with Buildozer (Corrected Action)
-        uses: anas-alkassem/buildozer-action@v1.1  # <-- تم تصحيح هذا السطر
+      - name: Build with official Kivy action
+        uses: kivy/buildozer-action@master
         id: buildozer
         with:
-          build_dir: .
-          
-      - name: Upload generated APK
+          # لا تحتاج إلى أي إعدادات إضافية، الأداة ذكية بما يكفي
+          # للبحث عن ملف buildozer.spec وبناء المشروع
+          command: buildozer android debug
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: HackerCalculator-APK
