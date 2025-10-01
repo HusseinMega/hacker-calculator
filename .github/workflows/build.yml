@@ -43,16 +43,21 @@ jobs:
       # إعداد Android SDK/NDK
       - name: Setup Android environment
         run: |
-          # تثبيت Android SDK Command-line tools
           mkdir -p $HOME/android-sdk/cmdline-tools
           cd $HOME/android-sdk/cmdline-tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
           unzip commandlinetools-linux-9477386_latest.zip
           mv cmdline-tools latest
-          
-          # تعيين متغيرات البيئة
           echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
           echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_ENV
+
+      # ==================================================================
+      #  *** الخطوة الجديدة والمهمة هنا ***
+      #  هذه الخطوة توافق تلقائيًا على جميع تراخيص أندرويد
+      # ==================================================================
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sdkmanager --licenses
 
       # بناء APK
       - name: Build APK with Buildozer
