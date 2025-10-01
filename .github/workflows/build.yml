@@ -40,24 +40,31 @@ jobs:
             openjdk-17-jdk \
             unzip
 
-      # إعداد Android SDK/NDK
-      - name: Setup Android environment
+      # ==================================================================
+      #  *** التغيير المهم هنا: إعداد البيئة والموافقة على التراخيص ***
+      #  سنقوم بتعريف المسارات والموافقة في نفس الخطوة لضمان التعرف عليها
+      # ==================================================================
+      - name: Setup Android Environment & Accept Licenses
         run: |
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk/cmdline-tools
+          # إنشاء المسارات
+          export ANDROID_HOME="$HOME/android-sdk"
+          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
+          
+          # إنشاء مجلدات SDK
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          
+          # تنزيل وفك ضغط أدوات سطر الأوامر
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-9477386_latest.zip
-          mv cmdline-tools latest
-          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
-          echo "PATH=$PATH:$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_ENV
-
-      # ==================================================================
-      #  *** الخطوة الجديدة والمهمة هنا ***
-      #  هذه الخطوة توافق تلقائيًا على جميع تراخيص أندرويد
-      # ==================================================================
-      - name: Accept Android SDK licenses
-        run: |
+          unzip commandlinetools-linux-9477386_latest.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          
+          # الموافقة على التراخيص
+          echo "y" | sdkmanager "platform-tools" "platforms;android-31"
           yes | sdkmanager --licenses
+          
+          # تصدير المسارات إلى خطوات العمل التالية
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
 
       # بناء APK
       - name: Build APK with Buildozer
