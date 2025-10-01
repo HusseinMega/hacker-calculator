@@ -1,4 +1,4 @@
-name: Build Kivy APK (Modern)
+name: Build Kivy APK (Final Attempt)
 
 on: [push]
 
@@ -15,12 +15,18 @@ jobs:
         with:
           python-version: '3.9'
 
+      # ==================================================================
+      #  *** التغيير المهم هنا ***
+      #  نعود إلى الإصدار v1 مع إضافة متغير بيئة لحل مشكلة chown
+      # ==================================================================
       - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@1.2.1  # <-- تم تصحيح هذا السطر
+        uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
         with:
           buildozer_version: "1.5.0"
           command: "buildozer android debug"
+          # هذا السطر يخبر الأداة بتجاوز خطوة تغيير الملكية التي تسبب الخطأ
+          user: "root" 
           
       - name: Upload generated APK
         uses: actions/upload-artifact@v4
