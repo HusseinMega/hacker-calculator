@@ -1,25 +1,26 @@
-name: Build with Official Kivy Action
-on: [push]
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      # تثبيت Python
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
-      # تثبيت الاعتماديات
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
-          pip install --upgrade pip
-          pip install buildozer cython==0.29.33
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
@@ -34,46 +35,97 @@ jobs:
             libavformat-dev \
             libavcodec-dev \
             zlib1g-dev \
-            libgstreamer1.0 \
+            libgstreamer1.0-dev \
             gstreamer1.0-plugins-base \
             gstreamer1.0-plugins-good \
             openjdk-17-jdk \
-            unzip
+            unzip \
+            wget \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config
 
-      # ==================================================================
-      #  *** التغيير المهم هنا: إعداد البيئة والموافقة على التراخيص ***
-      #  سنقوم بتعريف المسارات والموافقة في نفس الخطوة لضمان التعرف عليها
-      # ==================================================================
-      - name: Setup Android Environment & Accept Licenses
+      - name: Install Buildozer and Cython
         run: |
-          # إنشاء المسارات
-          export ANDROID_HOME="$HOME/android-sdk"
-          export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH"
-          
-          # إنشاء مجلدات SDK
-          mkdir -p $ANDROID_HOME/cmdline-tools
-          
-          # تنزيل وفك ضغط أدوات سطر الأوامر
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          unzip commandlinetools-linux-9477386_latest.zip -d $ANDROID_HOME/cmdline-tools
-          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
-          
-          # الموافقة على التراخيص
-          echo "y" | sdkmanager "platform-tools" "platforms;android-31"
-          yes | sdkmanager --licenses
-          
-          # تصدير المسارات إلى خطوات العمل التالية
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
-          echo "PATH=$PATH" >> $GITHUB_ENV
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.33
 
-      # بناء APK
-      - name: Build APK with Buildozer
+      - name: Setup Android SDK and NDK
         run: |
-          buildozer android debug
+          # إنشاء مجلد Android SDK
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk/cmdline-tools
+          
+          # تحميل Android Command Line Tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip -q commandlinetools-linux-9477386_latest.zip
+          mv cmdline-tools latest
+          
+          # تعيين متغيرات البيئة
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+          
+          # قبول التراخيص
+          yes | sdkmanager --licenses || true
+          
+          # تثبيت Build Tools إصدار مستقر
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
+          
+          # حفظ المتغيرات للخطوات التالية
+          echo "ANDROID_HOME=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653" >> $GITHUB_ENV
+          echo "$HOME/android-sdk/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
+          echo "$HOME/android-sdk/build-tools/33.0.2" >> $GITHUB_PATH
 
-      # رفع ملف APK
-      - name: Upload APK
+      - name: Update buildozer.spec for compatibility
+        run: |
+          # تحديث buildozer.spec لاستخدام إصدارات مستقرة
+          if [ -f buildozer.spec ]; then
+            sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
+            sed -i 's/android.minapi = .*/android.minapi = 21/' buildozer.spec
+            sed -i 's/android.ndk = .*/android.ndk = 25.2.9519653/' buildozer.spec
+            sed -i 's/android.sdk = .*/android.sdk = 33/' buildozer.spec
+            sed -i 's/android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
+            
+            # إضافة السطر إذا لم يكن موجوداً
+            if ! grep -q "android.accept_sdk_license" buildozer.spec; then
+              echo "android.accept_sdk_license = True" >> buildozer.spec
+            fi
+          fi
+
+      - name: Cache Buildozer directory
+        uses: actions/cache@v3
+        with:
+          path: .buildozer
+          key: buildozer-${{ hashFiles('buildozer.spec') }}-v2
+          restore-keys: |
+            buildozer-
+
+      - name: Build with Buildozer
+        run: |
+          # التأكد من وجود المتغيرات
+          export ANDROID_HOME=$HOME/android-sdk
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/33.0.2
+          
+          # بناء APK
+          buildozer android debug || (cat .buildozer/android/platform/build-*/log/*.log && exit 1)
+
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: HackerCalculator-APK
-          path: .buildozer/android/platform/build-*/outputs/apk/debug/*.apk
+          name: app-debug
+          path: bin/*.apk
+          if-no-files-found: warn
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: .buildozer/android/platform/build-*/log/*.log
+          if-no-files-found: ignore
