@@ -1,0 +1,312 @@
+# hackercalculator.kv - Professional Edition (v3 - Layout Fixed)
+
+# --- الشاشة الافتتاحية (لا تغيير هنا) ---
+<SplashScreen>:
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+        canvas:
+            Color:
+                rgba: 0, 0.3, 0, 0.2
+            Line:
+                points: [0, self.height/3, self.width, self.height/3]
+                width: 1
+            Line:
+                points: [0, 2*self.height/3, self.width, 2*self.height/3]
+                width: 1
+            Line:
+                points: [self.width/3, 0, self.width/3, self.height]
+                width: 1
+            Line:
+                points: [2*self.width/3, 0, 2*self.width/3, self.height]
+                width: 1
+        Label:
+            text: "i kill you"
+            font_size: '60sp'
+            pos_hint: {'center_x': 0.505, 'center_y': 0.495}
+            color: 0.2, 0, 0, root.text_opacity * 0.8
+            font_name: 'RobotoMono-Regular'
+        Label:
+            text: "i kill you"
+            font_size: '60sp'
+            pos_hint: {'center_x': 0.5, 'center_y': 0.5}
+            color: 1, 0, 0, root.text_opacity
+            font_name: 'RobotoMono-Regular'
+        Label:
+            text: "[ HACKER CALCULATOR v2.0 ]"
+            font_size: '16sp'
+            pos_hint: {'center_x': 0.5, 'center_y': 0.35}
+            color: 0, 1, 0, root.text_opacity * 0.7
+            font_name: 'RobotoMono-Regular'
+        ProgressBar:
+            max: 100
+            value: root.text_opacity * 100
+            pos_hint: {'center_x': 0.5, 'center_y': 0.25}
+            size_hint: 0.6, None
+            height: 2
+
+# --- شاشة الآلة الحاسبة ---
+<CalculatorScreen>:
+    CalculatorWidget:
+
+# --- ودجت الآلة الحاسبة المحترف ---
+<CalculatorWidget>:
+    canvas.before:
+        Color:
+            rgba: 0, 0, 0, 0.4
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    FloatLayout:
+        Image:
+            source: 'background.gif'
+            anim_delay: 0.05
+            allow_stretch: True
+            keep_ratio: False
+            opacity: 0.3
+
+        BoxLayout:
+            orientation: 'vertical'
+            padding: 10
+            spacing: 10
+
+            # --- منطقة العرض المحسنة (لا تغيير هنا) ---
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_y: 0.30
+                padding: [15, 10]
+                spacing: 5
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, 0.7
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [10]
+                    Color:
+                        rgba: 0, 0.8, 0, 0.8
+                    Line:
+                        rounded_rectangle: self.x, self.y, self.width, self.height, 10
+                        width: 2
+                Label:
+                    text: root.history_text
+                    font_size: '20sp'
+                    color: 0, 0.7, 0, 1
+                    halign: 'right'
+                    valign: 'middle'
+                    size_hint_y: 0.25
+                    text_size: self.size
+                    padding: [10, 0]
+                    font_name: 'RobotoMono-Regular'
+                Label:
+                    text: root.display_text
+                    font_size: '55sp'
+                    color: root.display_color
+                    halign: 'right'
+                    valign: 'bottom'
+                    text_size: self.size
+                    padding: [10, 10]
+                    font_name: 'RobotoMono-Regular'
+                    canvas.before:
+                        Color:
+                            rgba: 0, 0.3, 0, 0.2
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+
+            # --- *** بداية التعديل على تخطيط الأزرار *** ---
+            # شبكة موحدة لجميع الأزرار لضمان التناسق
+            GridLayout:
+                cols: 4
+                spacing: 5
+
+                # --- الصف الأول: دوال الذاكرة والمسح ---
+                MemoryButton:
+                    text: "MC"
+                MemoryButton:
+                    text: "MR"
+                MemoryButton:
+                    text: "M+"
+                MemoryButton:
+                    text: "M-"
+
+                # --- الصف الثاني: دوال علمية ومسح ---
+                FunctionButton:
+                    text: "CE"
+                ClearButton:
+                    text: "C"
+                OperatorButton:
+                    text: "←"
+                OperatorButton:
+                    text: "÷"
+
+                # --- الصف الثالث: أرقام 7-9 ---
+                NumberButton:
+                    text: "7"
+                NumberButton:
+                    text: "8"
+                NumberButton:
+                    text: "9"
+                OperatorButton:
+                    text: "×"
+
+                # --- الصف الرابع: أرقام 4-6 ---
+                NumberButton:
+                    text: "4"
+                NumberButton:
+                    text: "5"
+                NumberButton:
+                    text: "6"
+                OperatorButton:
+                    text: "-"
+
+                # --- الصف الخامس: أرقام 1-3 ---
+                NumberButton:
+                    text: "1"
+                NumberButton:
+                    text: "2"
+                NumberButton:
+                    text: "3"
+                OperatorButton:
+                    text: "+"
+
+                # --- الصف السادس: 0 والنقطة والمساواة ---
+                NumberButton:
+                    text: "0"
+                    size_hint_x: 2 # زر الصفر يأخذ عرض خليتين
+                NumberButton:
+                    text: "."
+                EqualsButton:
+                    text: "="
+            # --- *** نهاية التعديل على تخطيط الأزرار *** ---
+
+
+# --- أنماط الأزرار الاحترافية (لا تغيير هنا) ---
+<NumberButton@Button>:
+    font_size: '32sp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 1, 1, 1, 1
+    font_name: 'RobotoMono-Regular'
+    bold: True
+    on_press: app.root.get_screen('calculator').children[0].on_button_press(self.text)
+    canvas.before:
+        Color:
+            rgba: 0, 0.15, 0, 0.6
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: (0, 0.5, 0, 1) if self.state == 'down' else (0, 0.3, 0, 1)
+        Line:
+            rounded_rectangle: self.x, self.y, self.width, self.height, 8
+            width: 2
+
+<OperatorButton@Button>:
+    font_size: '36sp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 0, 1, 1, 1
+    font_name: 'RobotoMono-Regular'
+    bold: True
+    on_press: app.root.get_screen('calculator').children[0].on_button_press(self.text)
+    canvas.before:
+        Color:
+            rgba: 0, 0.2, 0.2, 0.6
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: (0, 0.8, 0.8, 1) if self.state == 'down' else (0, 0.5, 0.5, 1)
+        Line:
+            rounded_rectangle: self.x, self.y, self.width, self.height, 8
+            width: 2
+
+<EqualsButton@Button>:
+    font_size: '40sp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 0, 0, 0, 1
+    font_name: 'RobotoMono-Regular'
+    bold: True
+    on_press: app.root.get_screen('calculator').children[0].on_button_press(self.text)
+    canvas.before:
+        Color:
+            rgba: (0, 0.8, 0, 1) if self.state == 'down' else (0, 1, 0, 0.9)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: 0, 0.5, 0, 1
+        Line:
+            rounded_rectangle: self.x, self.y, self.width, self.height, 8
+            width: 2
+
+<ClearButton@Button>:
+    font_size: '32sp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 0, 0, 0, 1
+    font_name: 'RobotoMono-Regular'
+    bold: True
+    on_press: app.root.get_screen('calculator').children[0].on_button_press(self.text)
+    canvas.before:
+        Color:
+            rgba: (0.8, 0, 0, 1) if self.state == 'down' else (1, 0, 0, 0.9)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: 0.5, 0, 0, 1
+        Line:
+            rounded_rectangle: self.x, self.y, self.width, self.height, 8
+            width: 2
+
+<FunctionButton@Button>:
+    font_size: '24sp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 1, 1, 0, 1
+    font_name: 'RobotoMono-Regular'
+    on_press: app.root.get_screen('calculator').children[0].on_button_press(self.text)
+    canvas.before:
+        Color:
+            rgba: 0.2, 0.2, 0, 0.6
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: (0.8, 0.8, 0, 1) if self.state == 'down' else (0.5, 0.5, 0, 1)
+        Line:
+            rounded_rectangle: self.x, self.y, self.width, self.height, 8
+            width: 2
+
+<MemoryButton@Button>:
+    font_size: '20sp'
+    background_normal: ''
+    background_color: 0, 0, 0, 0
+    color: 1, 0.5, 0, 1
+    font_name: 'RobotoMono-Regular'
+    on_press: app.root.get_screen('calculator').children[0].on_button_press(self.text)
+    canvas.before:
+        Color:
+            rgba: 0.2, 0.1, 0, 0.6
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+        Color:
+            rgba: (1, 0.5, 0, 1) if self.state == 'down' else (0.6, 0.3, 0, 1)
+        Line:
+            rounded_rectangle: self.x, self.y, self.width, self.height, 8
+            width: 2
