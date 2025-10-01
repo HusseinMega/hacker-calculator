@@ -80,10 +80,16 @@ jobs:
           echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
           echo "$HOME/android-sdk/build-tools/33.0.2" >> $GITHUB_PATH
 
-      - name: Verify buildozer.spec configuration
+      - name: Fix duplicate entries in buildozer.spec
         run: |
-          echo "=== Checking buildozer.spec settings ==="
+          echo "=== Fixing buildozer.spec duplicates ==="
           if [ -f buildozer.spec ]; then
+            # إزالة الأسطر المكررة مع الحفاظ على الترتيب
+            awk '!seen[$0]++' buildozer.spec > buildozer.spec.tmp
+            mv buildozer.spec.tmp buildozer.spec
+            
+            # التحقق من الإعدادات
+            echo "=== Checking buildozer.spec settings ==="
             grep "android.api" buildozer.spec || echo "⚠️ android.api not found"
             grep "android.minapi" buildozer.spec || echo "⚠️ android.minapi not found"
             grep "android.ndk" buildozer.spec || echo "⚠️ android.ndk not found"
