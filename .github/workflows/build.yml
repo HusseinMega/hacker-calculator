@@ -69,7 +69,7 @@ jobs:
           # قبول التراخيص
           yes | sdkmanager --licenses || true
           
-          # تثبيت Build Tools إصدار مستقر
+          # تثبيت Build Tools وNDK إصدار 25b (متوافق مع buildozer.spec)
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2" "ndk;25.2.9519653"
           
           # حفظ المتغيرات للخطوات التالية
@@ -80,27 +80,25 @@ jobs:
           echo "$HOME/android-sdk/platform-tools" >> $GITHUB_PATH
           echo "$HOME/android-sdk/build-tools/33.0.2" >> $GITHUB_PATH
 
-      - name: Update buildozer.spec for compatibility
+      - name: Verify buildozer.spec configuration
         run: |
-          # تحديث buildozer.spec لاستخدام إصدارات مستقرة
+          echo "=== Checking buildozer.spec settings ==="
           if [ -f buildozer.spec ]; then
-            sed -i 's/android.api = .*/android.api = 33/' buildozer.spec
-            sed -i 's/android.minapi = .*/android.minapi = 21/' buildozer.spec
-            sed -i 's/android.ndk = .*/android.ndk = 25.2.9519653/' buildozer.spec
-            sed -i 's/android.sdk = .*/android.sdk = 33/' buildozer.spec
-            sed -i 's/android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
-            
-            # إضافة السطر إذا لم يكن موجوداً
-            if ! grep -q "android.accept_sdk_license" buildozer.spec; then
-              echo "android.accept_sdk_license = True" >> buildozer.spec
-            fi
+            grep "android.api" buildozer.spec || echo "⚠️ android.api not found"
+            grep "android.minapi" buildozer.spec || echo "⚠️ android.minapi not found"
+            grep "android.ndk" buildozer.spec || echo "⚠️ android.ndk not found"
+            grep "android.accept_sdk_license" buildozer.spec || echo "⚠️ android.accept_sdk_license not found"
+            echo "=== buildozer.spec verification complete ==="
+          else
+            echo "❌ buildozer.spec file not found!"
+            exit 1
           fi
 
       - name: Cache Buildozer directory
         uses: actions/cache@v3
         with:
           path: .buildozer
-          key: buildozer-${{ hashFiles('buildozer.spec') }}-v2
+          key: buildozer-${{ hashFiles('buildozer.spec') }}-v3
           restore-keys: |
             buildozer-
 
@@ -112,13 +110,29 @@ jobs:
           export ANDROID_NDK_HOME=$HOME/android-sdk/ndk/25.2.9519653
           export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/33.0.2
           
+          # عرض معلومات البيئة
+          echo "=== Environment Info ==="
+          echo "ANDROID_HOME: $ANDROID_HOME"
+          echo "ANDROID_NDK_HOME: $ANDROID_NDK_HOME"
+          echo "Python version: $(python --version)"
+          echo "Buildozer version: $(buildozer --version)"
+          
           # بناء APK
-          buildozer android debug || (cat .buildozer/android/platform/build-*/log/*.log && exit 1)
+          echo "=== Starting APK Build ==="
+          buildozer -v android debug || (echo "=== Build Failed - Showing Logs ===" && cat .buildozer/android/platform/build-*/log/*.log 2>/dev/null && exit 1)
+
+      - name: List generated files
+        if: success()
+        run: |
+          echo "=== Checking for APK files ==="
+          ls -lh bin/ || echo "bin/ directory not found"
+          find . -name "*.apk" -type f
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: HackerCalculator-APK
           path: bin/*.apk
           if-no-files-found: warn
 
@@ -127,5 +141,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-logs
-          path: .buildozer/android/platform/build-*/log/*.log
+          path: |
+            .buildozer/android/platform/build-*/log/*.log
+            .buildozer/android/logs/*.log
           if-no-files-found: ignore
