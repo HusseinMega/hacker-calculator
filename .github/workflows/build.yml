@@ -1,4 +1,4 @@
-name: Build Kivy APK (Final Attempt)
+name: Build Android APK with GitHub Actions
 
 on: [push]
 
@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -16,20 +16,17 @@ jobs:
           python-version: '3.9'
 
       # ==================================================================
-      #  *** التغيير المهم هنا ***
-      #  نعود إلى الإصدار v1 مع إضافة متغير بيئة لحل مشكلة chown
+      #  *** استخدام أداة بناء جديدة ومختلفة ***
+      #  هذه الأداة أكثر حداثة ومصممة لتجنب مشاكل الصلاحيات
       # ==================================================================
-      - name: Build with Buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1
+      - name: Build with Buildozer (New Action)
+        uses: anas-al-kassem/buildozer-action@v1.1
         id: buildozer
         with:
-          buildozer_version: "1.5.0"
-          command: "buildozer android debug"
-          # هذا السطر يخبر الأداة بتجاوز خطوة تغيير الملكية التي تسبب الخطأ
-          user: "root" 
+          build_dir: .
           
       - name: Upload generated APK
         uses: actions/upload-artifact@v4
         with:
           name: HackerCalculator-APK
-          path: ${{ steps.buildozer.outputs.filename }}
+          path: ${{ steps.buildozer.outputs.apk_path }}
