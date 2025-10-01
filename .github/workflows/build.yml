@@ -16,10 +16,10 @@ jobs:
           python-version: '3.9'
 
       # ==================================================================
-      #  *** استخدام أداة بناء جديدة ومختلفة وموثوقة ***
+      #  *** تم تصحيح اسم مالك الأداة هنا ***
       # ==================================================================
-      - name: Build with Buildozer (New Action)
-        uses: anas-al-kassem/buildozer-action@v1.1
+      - name: Build with Buildozer (Corrected Action)
+        uses: anas-alkassem/buildozer-action@v1.1  # <-- تم تصحيح هذا السطر
         id: buildozer
         with:
           build_dir: .
