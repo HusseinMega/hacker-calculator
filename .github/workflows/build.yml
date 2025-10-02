@@ -88,38 +88,72 @@ jobs:
           
           # السماح لـ buildozer بإدارة كل شيء
           echo "=== Starting Build ==="
-          yes | buildozer -v android debug 2>&1 | tee build.log || {
+          echo "=== Python version: $(python --version) ==="
+          echo "=== Buildozer version: $(buildozer --version) ==="
+          
+          # تشغيل buildozer مع معالجة الأخطاء
+          if yes | buildozer -v android debug 2>&1 | tee build.log; then
+            echo "=== Build completed successfully ==="
+          else
             echo "=== Build Failed ==="
-            echo "=== Last 100 lines of build log ==="
-            tail -n 100 build.log
-            echo "=== Searching for errors ==="
-            grep -i "error" build.log | tail -n 20 || true
+            echo ""
+            echo "=== Last 150 lines of build log ==="
+            tail -n 150 build.log
+            echo ""
+            echo "=== Searching for ERROR keywords ==="
+            grep -i "error\|exception\|failed" build.log | tail -n 30 || true
+            echo ""
+            echo "=== Checking if APK was created despite errors ==="
+            find . -name "*.apk" -type f -exec ls -lh {} \; || echo "No APK files found"
             exit 1
-          }
+          fi
 
       - name: List and move APK files
         if: success()
         run: |
-          echo "=== Looking for APK files ==="
-          find . -name "*.apk" -type f -exec ls -lh {} \;
+          echo "=== Searching for APK files in entire project ==="
+          find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found anywhere!"
+          
+          echo ""
+          echo "=== Checking common buildozer output locations ==="
+          ls -la bin/ 2>/dev/null || echo "bin/ directory does not exist"
+          ls -la .buildozer/android/platform/build-*/dists/*/build/outputs/apk/ 2>/dev/null || echo "Standard APK output path does not exist"
+          
+          echo ""
+          echo "=== Looking for debug APK specifically ==="
+          find .buildozer -name "*debug*.apk" -type f 2>/dev/null || echo "No debug APK found in .buildozer"
           
           # إنشاء مجلد output
           mkdir -p output
           
           # نسخ جميع ملفات APK إلى مجلد واحد
+          echo ""
           echo "=== Copying APK files to output/ ==="
-          find . -name "*.apk" -type f -exec cp {} output/ \;
+          APK_COUNT=$(find . -name "*.apk" -type f 2>/dev/null | wc -l)
+          echo "Found $APK_COUNT APK file(s)"
           
-          # عرض الملفات المنسوخة
-          echo "=== Files in output/ ==="
-          ls -lh output/
+          if [ "$APK_COUNT" -gt 0 ]; then
+            find . -name "*.apk" -type f -exec cp -v {} output/ \;
+            echo ""
+            echo "=== Files in output/ ==="
+            ls -lh output/
+          else
+            echo "ERROR: No APK files found! Build may have failed silently."
+            echo ""
+            echo "=== Checking build.log for clues ==="
+            tail -n 50 build.log
+            exit 1
+          fi
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: HackerCalculator-APK
-          path: output/*.apk
+          path: |
+            output/*.apk
+            bin/*.apk
+            .buildozer/android/platform/build-*/dists/*/build/outputs/apk/**/*.apk
           if-no-files-found: error
 
       - name: Upload build log
